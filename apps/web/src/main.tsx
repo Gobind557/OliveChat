@@ -98,10 +98,16 @@ function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user
     setActive(data.conversation);
   }
 
-  async function newConversation() {
-    const data = await api.post<{ conversation: Conversation }>("/conversations", {});
-    setActive({ ...data.conversation, messages: [] });
-    await refreshConversations();
+  function newContext() {
+    setError("");
+    setInput("");
+    setActive({
+      id: "",
+      title: "New context",
+      status: "ACTIVE",
+      updatedAt: new Date().toISOString(),
+      messages: []
+    });
   }
 
   async function send() {
@@ -118,7 +124,15 @@ function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user
     try {
       await api.streamChat({ conversationId: active?.id || undefined, message: userText, provider, model }, (event) => {
         if (event.type === "conversation.created") {
-          setActive((current) => (current ? { ...current, id: String(event.conversationId) } : current));
+          setActive((current) =>
+            current
+              ? {
+                  ...current,
+                  id: String(event.conversationId),
+                  title: typeof event.title === "string" ? event.title : current.title
+                }
+              : current
+          );
         }
         if (event.type === "message.delta") {
           setActive((current) => appendAssistantDelta(current, String(event.delta)));
@@ -155,11 +169,11 @@ function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user
   return (
     <>
       <section className="flex w-80 flex-col border-r border-mint bg-white p-4">
-        <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={newConversation}>
-          <Plus size={16} /> New chat
+        <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={newContext}>
+          <Plus size={16} /> New context
         </button>
         <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-moss">
-          <span>Conversations</span>
+          <span>Contexts</span>
           <button className="rounded-md px-2 py-1 normal-case hover:bg-mint" onClick={refreshConversations}>Refresh</button>
         </div>
         <div className="min-h-0 flex-1 space-y-2 overflow-auto">

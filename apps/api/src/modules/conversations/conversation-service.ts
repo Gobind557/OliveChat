@@ -8,7 +8,7 @@ export class ConversationService {
     return prisma.conversation.create({
       data: {
         userId,
-        title: title ?? "New conversation"
+        title: title ?? "New context"
       }
     });
   }
@@ -57,10 +57,17 @@ export class ConversationService {
   }
 
   async addMessage(conversationId: string, role: MessageRole, content: string, provider?: string, model?: string) {
+    const messageCount = await prisma.chatMessage.count({ where: { conversationId } });
     const message = await prisma.chatMessage.create({
       data: { conversationId, role, content, provider, model }
     });
-    await prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        updatedAt: new Date(),
+        ...(role === "USER" && messageCount === 0 ? { title: toTitle(content) } : {})
+      }
+    });
     return message;
   }
 

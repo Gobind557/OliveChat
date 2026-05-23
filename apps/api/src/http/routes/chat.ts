@@ -33,7 +33,7 @@ chatRouter.post(
     };
 
     req.on("close", () => controller.abort(new Error("Client disconnected")));
-    send({ type: "conversation.created", conversationId: conversation.id });
+    send({ type: "conversation.created", conversationId: conversation.id, title: conversation.title });
 
     try {
       await conversationService.addMessage(conversation.id, "USER", body.message);

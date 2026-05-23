@@ -77,7 +77,7 @@ export function toTitle(input: string): string {
 }
 
 export type SseEvent =
-  | { type: "conversation.created"; conversationId: string }
+  | { type: "conversation.created"; conversationId: string; title: string }
   | { type: "message.delta"; delta: string }
   | { type: "message.done"; messageId: string; content: string }
   | { type: "cancelled"; conversationId: string }
