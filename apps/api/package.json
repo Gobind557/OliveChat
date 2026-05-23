@@ -1,0 +1,31 @@
+{
+  "name": "@olivechat/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@olivechat/llm": "0.1.0",
+    "@olivechat/queue": "0.1.0",
+    "@olivechat/shared": "0.1.0",
+    "@prisma/client": "^6.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-oauth2-jwt-bearer": "^1.6.0",
+    "helmet": "^8.0.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "typescript": "^5.7.2"
+  }
+}

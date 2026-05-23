@@ -1,0 +1,20 @@
+{
+  "name": "@olivechat/llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "groq-sdk": "^1.2.0",
+    "@olivechat/shared": "0.1.0",
+    "p-retry": "^6.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

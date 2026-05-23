@@ -1,0 +1,81 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: olivechat
+      POSTGRES_PASSWORD: olivechat
+      POSTGRES_DB: olivechat
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U olivechat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://olivechat:olivechat@postgres:5432/olivechat?schema=public
+      REDIS_URL: redis://redis:6379
+      WEB_ORIGIN: http://localhost:5173
+      AUTH_DISABLED: ${AUTH_DISABLED:-true}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-groq}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-llama-3.1-8b-instant}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://olivechat:olivechat@postgres:5432/olivechat?schema=public
+      REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-8}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      VITE_API_URL: http://localhost:4000
+      VITE_AUTH_DISABLED: ${VITE_AUTH_DISABLED:-true}
+      VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
+      VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
+      VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
