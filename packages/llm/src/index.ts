@@ -154,7 +154,11 @@ export class InstrumentedLLM {
 }
 
 export function createDefaultProviders(config: { groqApiKey?: string }) {
-  return new Map<string, LLMProvider>([["groq", new GroqProvider(config.groqApiKey)]]);
+  return new Map<string, LLMProvider>([
+    ["groq", new GroqProvider(config.groqApiKey)],
+    ["anthropic", new PlaceholderProvider("anthropic")],
+    ["gemini", new PlaceholderProvider("gemini")]
+  ]);
 }
 
 function isAbort(error: unknown) {
@@ -162,3 +166,38 @@ function isAbort(error: unknown) {
 }
 
 export { GroqProvider } from "./providers/groq.js";
+
+class PlaceholderProvider implements LLMProvider {
+  constructor(readonly name: string) {}
+
+  async generate(input: LLMInput): Promise<LLMResponse> {
+    const last = input.messages.at(-1)?.content ?? "";
+    const content = `${this.name} provider placeholder response: ${last}`;
+    return {
+      content,
+      usage: estimateUsage(input.messages, content)
+    };
+  }
+
+  async *stream(input: LLMInput): AsyncIterable<LLMStreamChunk> {
+    const response = await this.generate(input);
+    for (const token of response.content.split(/(\s+)/)) {
+      if (input.signal?.aborted) {
+        throw new DOMException("Request aborted", "AbortError");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      yield { delta: token };
+    }
+    yield { delta: "", usage: response.usage };
+  }
+}
+
+function estimateUsage(messages: LLMMessage[], output: string): LLMUsage {
+  const inputTokens = messages.reduce((sum, message) => sum + Math.ceil(message.content.length / 4), 0);
+  const outputTokens = Math.ceil(output.length / 4);
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens + outputTokens
+  };
+}

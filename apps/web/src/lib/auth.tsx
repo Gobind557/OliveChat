@@ -1,7 +1,10 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
 import type { PropsWithChildren } from "react";
 
-const authDisabled = import.meta.env.VITE_AUTH_DISABLED === "true";
+export const authDisabled = import.meta.env.VITE_AUTH_DISABLED === "true";
+export const auth0Configured = Boolean(
+  import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID && import.meta.env.VITE_AUTH0_AUDIENCE
+);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   if (authDisabled) {

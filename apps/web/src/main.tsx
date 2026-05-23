@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { LogOut, MessageSquare, Plus, Send, Square, BarChart3 } from "lucide-react";
+import { BarChart3, CheckCircle2, LogOut, MessageSquare, Play, Plus, Send, Shield, Square } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -15,7 +15,7 @@ import {
   YAxis,
   Cell
 } from "recharts";
-import { AuthProvider, useAppAuth } from "./lib/auth";
+import { AuthProvider, auth0Configured, authDisabled, useAppAuth } from "./lib/auth";
 import { createApiClient, type Conversation } from "./lib/api";
 import "./index.css";
 
@@ -51,17 +51,41 @@ function App() {
           <LogOut size={20} />
         </button>
       </aside>
-      {view === "chat" ? <ChatView api={api} /> : <DashboardView api={api} />}
+      {view === "chat" ? <ChatView api={api} user={auth.user} /> : <DashboardView api={api} />}
     </div>
   );
 }
 
-function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
+const providerOptions = [
+  {
+    id: "groq",
+    label: "Groq",
+    enabled: true,
+    models: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+  },
+  {
+    id: "anthropic",
+    label: "Anthropic",
+    enabled: true,
+    models: ["claude-3-5-sonnet-latest"]
+  },
+  {
+    id: "gemini",
+    label: "Gemini",
+    enabled: true,
+    models: ["gemini-1.5-pro"]
+  }
+];
+
+function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user?: { name?: string; email?: string } }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [active, setActive] = useState<Conversation | null>(null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState("");
+  const [provider, setProvider] = useState(providerOptions[0].id);
+  const [model, setModel] = useState(providerOptions[0].models[0]);
+  const selectedProvider = providerOptions.find((option) => option.id === provider) ?? providerOptions[0];
 
   async function refreshConversations() {
     const data = await api.get<{ items: Conversation[] }>("/conversations");
@@ -69,6 +93,7 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
   }
 
   async function openConversation(id: string) {
+    setError("");
     const data = await api.get<{ conversation: Conversation }>(`/conversations/${id}`);
     setActive(data.conversation);
   }
@@ -91,7 +116,7 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
     }));
 
     try {
-      await api.streamChat({ conversationId: active?.id || undefined, message: userText }, (event) => {
+      await api.streamChat({ conversationId: active?.id || undefined, message: userText, provider, model }, (event) => {
         if (event.type === "conversation.created") {
           setActive((current) => (current ? { ...current, id: String(event.conversationId) } : current));
         }
@@ -103,6 +128,9 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
         }
         if (event.type === "error") {
           setError(String(event.message));
+        }
+        if (event.type === "cancelled") {
+          setActive((current) => (current ? { ...current, status: "CANCELLED" } : current));
         }
       });
       await refreshConversations();
@@ -116,6 +144,7 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
   async function cancel() {
     if (!active?.id) return;
     await api.post(`/conversations/${active.id}/cancel`);
+    setActive((current) => (current ? { ...current, status: "CANCELLED" } : current));
     await refreshConversations();
   }
 
@@ -125,30 +154,62 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
 
   return (
     <>
-      <section className="w-80 border-r border-mint bg-white p-4">
+      <section className="flex w-80 flex-col border-r border-mint bg-white p-4">
         <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={newConversation}>
           <Plus size={16} /> New chat
         </button>
-        <div className="space-y-2">
+        <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-moss">
+          <span>Conversations</span>
+          <button className="rounded-md px-2 py-1 normal-case hover:bg-mint" onClick={refreshConversations}>Refresh</button>
+        </div>
+        <div className="min-h-0 flex-1 space-y-2 overflow-auto">
           {conversations.map((conversation) => (
-            <button
+            <div
               key={conversation.id}
-              className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-mint"
-              onClick={() => openConversation(conversation.id)}
+              className={`rounded-md border px-3 py-2 text-sm ${active?.id === conversation.id ? "border-moss bg-mint" : "border-transparent hover:bg-mint"}`}
             >
-              <span className="block truncate font-medium">{conversation.title}</span>
-              <span className="text-xs text-moss">{conversation.status}</span>
-            </button>
+              <button className="block w-full text-left" onClick={() => openConversation(conversation.id)}>
+                <span className="block truncate font-medium">{conversation.title}</span>
+                <span className="text-xs text-moss">{conversation.status}</span>
+              </button>
+              <button className="mt-2 inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-moss hover:text-ink" onClick={() => openConversation(conversation.id)}>
+                <Play size={12} /> Resume
+              </button>
+            </div>
           ))}
         </div>
+        <AuthStatus user={user} />
       </section>
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-mint bg-white px-6 py-4">
           <div>
             <h1 className="text-lg font-semibold">{active?.title ?? "OliveChat"}</h1>
-            <p className="text-sm text-moss">Streaming AI chat with inference logging</p>
+            <p className="text-sm text-moss">{selectedProvider.label} / {model}</p>
           </div>
-          <button title="Cancel" className="rounded-md p-3 text-coral hover:bg-mint" onClick={cancel}>
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-moss" htmlFor="provider">Provider</label>
+            <select
+              id="provider"
+              className="rounded-md border border-mint bg-white px-3 py-2 text-sm"
+              value={provider}
+              onChange={(event) => {
+                const next = providerOptions.find((option) => option.id === event.target.value) ?? providerOptions[0];
+                setProvider(next.id);
+                setModel(next.models[0]);
+              }}
+            >
+              {providerOptions.map((option) => (
+                <option key={option.id} value={option.id} disabled={!option.enabled}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <label className="text-sm text-moss" htmlFor="model">Model</label>
+            <select id="model" className="rounded-md border border-mint bg-white px-3 py-2 text-sm" value={model} onChange={(event) => setModel(event.target.value)}>
+              {selectedProvider.models.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </div>
+          <button title="Cancel conversation" className="rounded-md p-3 text-coral hover:bg-mint disabled:opacity-40" onClick={cancel} disabled={!active?.id || active.status === "CANCELLED"}>
             <Square size={18} />
           </button>
         </header>
@@ -162,12 +223,27 @@ function ChatView({ api }: { api: ReturnType<typeof createApiClient> }) {
         </div>
         <form className="flex gap-3 border-t border-mint bg-white p-4" onSubmit={(event) => { event.preventDefault(); void send(); }}>
           <input className="min-w-0 flex-1 rounded-md border border-mint px-4 py-3 text-sm outline-none focus:border-moss" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Ask something..." />
-          <button className="rounded-md bg-ink px-4 py-3 text-white disabled:opacity-50" disabled={streaming || !input.trim()} title="Send">
+          <button className="rounded-md bg-ink px-4 py-3 text-white disabled:opacity-50" disabled={streaming || !input.trim() || active?.status === "CANCELLED"} title="Send">
             <Send size={18} />
           </button>
         </form>
       </main>
     </>
+  );
+}
+
+function AuthStatus({ user }: { user?: { name?: string; email?: string } }) {
+  return (
+    <div className="mt-4 rounded-md border border-mint bg-[#f7faf8] p-3 text-xs text-moss">
+      <div className="mb-2 flex items-center gap-2 font-semibold text-ink">
+        <Shield size={14} /> Auth
+      </div>
+      <div className="flex items-center gap-2">
+        <CheckCircle2 size={13} className="text-moss" />
+        <span>{authDisabled ? "Dev mode" : auth0Configured ? "Auth0 active" : "Auth0 needs env"}</span>
+      </div>
+      <div className="mt-2 truncate">{user?.email ?? user?.name ?? "Local workspace"}</div>
+    </div>
   );
 }
 
