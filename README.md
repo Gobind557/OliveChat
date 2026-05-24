@@ -32,7 +32,7 @@ For local development without Auth0, keep `AUTH_DISABLED=true` and `VITE_AUTH_DI
 
 The schema separates product records from observability records:
 
-- conversations and messages keep the full chat history for resume/context.
+- conversations and messages keep the full chat history for resume.
 - inference logs store normalized latency, token, provider, status, and error fields.
 - inference metadata stores flexible JSONB payloads for provider-specific details.
 

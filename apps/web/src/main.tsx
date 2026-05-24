@@ -98,12 +98,12 @@ function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user
     setActive(data.conversation);
   }
 
-  function newContext() {
+  function newChat() {
     setError("");
     setInput("");
     setActive({
       id: "",
-      title: "New context",
+      title: "New chat",
       status: "ACTIVE",
       updatedAt: new Date().toISOString(),
       messages: []
@@ -169,11 +169,11 @@ function ChatView({ api, user }: { api: ReturnType<typeof createApiClient>; user
   return (
     <>
       <section className="flex w-80 flex-col border-r border-mint bg-white p-4">
-        <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={newContext}>
-          <Plus size={16} /> New context
+        <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={newChat}>
+          <Plus size={16} /> New chat
         </button>
         <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-moss">
-          <span>Contexts</span>
+          <span>Chats</span>
           <button className="rounded-md px-2 py-1 normal-case hover:bg-mint" onClick={refreshConversations}>Refresh</button>
         </div>
         <div className="min-h-0 flex-1 space-y-2 overflow-auto">

@@ -37,13 +37,13 @@ chatRouter.post(
 
     try {
       await conversationService.addMessage(conversation.id, "USER", body.message);
-      const context = await conversationService.recentMessages(conversation.id);
+      const recentMessages = await conversationService.recentMessages(conversation.id);
       let assistantContent = "";
 
       for await (const chunk of llm.stream({
         provider,
         model,
-        messages: context,
+        messages: recentMessages,
         userId: user.id,
         conversationId: conversation.id,
         sessionId: conversation.id,

@@ -8,7 +8,7 @@ export class ConversationService {
     return prisma.conversation.create({
       data: {
         userId,
-        title: title ?? "New context"
+        title: title ?? "New chat"
       }
     });
   }
