@@ -19,7 +19,7 @@ React + Vite
 
 The API owns product traffic: authentication, conversations, messages, SSE streaming, cancellation, and dashboard reads. The LLM wrapper instruments provider calls and emits ingestion events asynchronously so chat latency is not blocked by observability writes. The worker validates, retries, deduplicates, and persists inference logs.
 
-## What Works Today
+## Features
 
 - Multi-turn chat with persisted conversations.
 - Chat list, resume, cancel, and streaming responses over SSE.
@@ -213,7 +213,6 @@ Current behavior:
 - `anthropic`: placeholder provider for abstraction/testing.
 - `gemini`: placeholder provider for abstraction/testing.
 
-To add a real provider, implement the `LLMProvider` interface in `packages/llm/src/providers`, register it in `createDefaultProviders`, and add the provider/model options in the frontend selector.
 
 ## Chat Behavior
 
@@ -317,7 +316,7 @@ Indexing prioritizes:
 
 Full chat messages are stored so conversations can be resumed accurately. Inference log previews are redacted before ingestion. The shared redaction utility currently handles common emails, phone numbers, bearer tokens, and API-key-like strings.
 
-This is intentionally a preview/logging boundary. If stricter data handling is required, add message-level redaction, encryption, retention policies, or a configurable PII policy.
+
 
 ## Testing Checklist
 
@@ -351,45 +350,7 @@ Auth0 flow:
 5. Create a chat.
 6. Confirm API calls include bearer tokens and conversations are user-scoped.
 
-## Troubleshooting
 
-If API or worker cannot resolve `@olivechat/*` inside Docker, rebuild after ensuring `.dockerignore` excludes local `node_modules`:
-
-```bash
-docker compose build --no-cache api worker web
-docker compose up
-```
-
-If Prisma cannot connect, confirm Postgres is healthy and `DATABASE_URL` points to the right host. Inside Docker, the host is `postgres`; outside Docker, it is usually `localhost`.
-
-If the dashboard is empty, confirm:
-
-- the worker is running
-- Redis is healthy
-- a chat request completed
-- the worker logs show completed ingestion jobs
-
-If Auth0 login succeeds but API calls fail, check:
-
-- `AUTH0_DOMAIN`
-- `AUTH0_AUDIENCE`
-- `VITE_AUTH0_AUDIENCE`
-- Auth0 API identifier
-- allowed callback/logout/web origin URLs
-
-## Production Considerations
-
-Before running this as a real production service, add:
-
-- rate limiting per user/API key
-- request IDs and distributed tracing
-- stronger provider timeout/retry policies
-- secret management outside `.env`
-- migration deployment automation
-- dashboard query pagination and rollups
-- log retention and archival strategy
-- deeper integration tests for API, worker, and auth
-- real Anthropic/Gemini adapters if those providers are required
 
 ## Current Limitations
 
